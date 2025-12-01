@@ -20,6 +20,9 @@ requirements:
     - pnpm-licenses
   run:
     - nodejs
+  ignore_run_exports:
+    from_package:
+      - nodejs
 
 tests:
   - script:
