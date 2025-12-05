@@ -13,23 +13,56 @@ npm install -ddd \
 pnpm install
 pnpm-licenses generate-disclaimer --prod --output-file=third-party-licenses.txt
 
-# Create batch wrapper
-tee ${PREFIX}/bin/vscode-css-language-server.cmd << EOF
-call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\bin\vscode-css-language-server %*
-EOF
+# Make path relative to one another.
+# No ``realpath --relative-to`` on MacOS.
+relpath() {
+    to="$(realpath "$1")" || return 1
+    from="$(realpath "$2")" || return 1
 
-tee ${PREFIX}/bin/vscode-eslint-language-server.cmd << EOF
-call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\bin\vscode-eslint-language-server %*
-EOF
+    common="${from}"
+    rel=""
+    while [ "${to#"$common"}" = "${to}" ]; do
+        common="${common%/*}"
+        rel="../${rel}"
+    done
+    rel="${rel}${to#"$common"/}"
+    printf '%s\n' "${rel}"
+}
 
-tee ${PREFIX}/bin/vscode-html-language-server.cmd << EOF
-call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\bin\vscode-html-language-server %*
-EOF
+# Replace a symlink by a call to its content
+shim_symlink () {
+    local path="${1}"
+    local path_dir="$(dirname "${path}")"
+    local real="$(realpath "${path}")"
+    local real_rel_path="$(relpath "${real}" "${path_dir}")"
 
-tee ${PREFIX}/bin/vscode-json-language-server.cmd << EOF
-call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\bin\vscode-json-language-server %*
-EOF
+    echo "Fixing symlink ${path}"
 
-tee ${PREFIX}/bin/vscode-markdown-language-server.cmd << EOF
-call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\bin\vscode-markdown-language-server %*
-EOF
+    rm "${path}"
+    {
+        echo '#!/usr/bin/env bash'
+        echo 'here="$(dirname "$(readlink -f "$0")")"'
+        echo '"${here}/'"${real_rel_path}"'" "$@"'
+    } > "${path}"
+    chmod +x "${path}"
+}
+
+
+# Replace all symlinks in ${PREFIX}/ by a shim.
+# Windows does not support symlinks without admin so the installer may fail.
+find "${PREFIX}/" -type l | while read -r f; do
+  shim_symlink "${f}"
+done
+
+# Make a windows shim in CMD to a .cmd file
+make_win_cmd() {
+    out="${1}.cmd"
+    base=$(basename "${out%.*}")
+    { echo "@\"%~dp0${base}\" %*"; } > "${out}"
+}
+
+make_win_cmd "${PREFIX}/bin/vscode-css-language-server"
+make_win_cmd "${PREFIX}/bin/vscode-eslint-language-server"
+make_win_cmd "${PREFIX}/bin/vscode-html-language-server"
+make_win_cmd "${PREFIX}/bin/vscode-json-language-server"
+make_win_cmd "${PREFIX}/bin/vscode-markdown-language-server"
