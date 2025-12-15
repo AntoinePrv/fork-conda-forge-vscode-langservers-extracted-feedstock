@@ -5,6 +5,7 @@ set -o xtrace -o nounset -o pipefail -o errexit
 # Create package archive and install globally
 npm pack --ignore-scripts
 npm install -ddd \
+    --no-bin-links \
     --global \
     --build-from-source \
     ${SRC_DIR}/${PKG_NAME}-${PKG_VERSION}.tgz
@@ -13,56 +14,43 @@ npm install -ddd \
 pnpm install
 pnpm-licenses generate-disclaimer --prod --output-file=third-party-licenses.txt
 
-# Make path relative to one another.
-# No ``realpath --relative-to`` on MacOS.
-relpath() {
-    to="$(realpath "$1")" || return 1
-    from="$(realpath "$2")" || return 1
+mkdir -p ${PREFIX}/bin
+tee ${PREFIX}/bin/vscode-css-language-server << EOF
+#!/bin/sh
+exec \${CONDA_PREFIX}/lib/node_modules/vscode-langservers-extracted/bin/vscode-css-language-server "\$@"
+EOF
+chmod +x ${PREFIX}/bin/vscode-css-language-server
 
-    common="${from}"
-    rel=""
-    while [ "${to#"$common"}" = "${to}" ]; do
-        common="${common%/*}"
-        rel="../${rel}"
-    done
-    rel="${rel}${to#"$common"/}"
-    printf '%s\n' "${rel}"
-}
+tee ${PREFIX}/bin/vscode-eslint-server << EOF
+#!/bin/sh
+exec \${CONDA_PREFIX}/lib/node_modules/vscode-langservers-extracted/bin/vscode-eslint-server "\$@"
+EOF
+chmod +x ${PREFIX}/bin/vscode-eslint-server
 
-# Replace a symlink by a call to its content
-shim_symlink () {
-    local path="${1}"
-    local path_dir="$(dirname "${path}")"
-    local real="$(realpath "${path}")"
-    local real_rel_path="$(relpath "${real}" "${path_dir}")"
+tee ${PREFIX}/bin/vscode-json-server << EOF
+#!/bin/sh
+exec \${CONDA_PREFIX}/lib/node_modules/vscode-langservers-extracted/bin/vscode-json-server "\$@"
+EOF
+chmod +x ${PREFIX}/bin/vscode-json-server
 
-    echo "Fixing symlink ${path}"
+tee ${PREFIX}/bin/vscode-markdown-server << EOF
+#!/bin/sh
+exec \${CONDA_PREFIX}/lib/node_modules/vscode-langservers-extracted/bin/vscode-markdown-server "\$@"
+EOF
+chmod +x ${PREFIX}/bin/vscode-markdown-server
 
-    rm "${path}"
-    {
-        echo '#!/usr/bin/env bash'
-        echo 'here="$(dirname "$(readlink -f "$0")")"'
-        echo '"${here}/'"${real_rel_path}"'" "$@"'
-    } > "${path}"
-    chmod +x "${path}"
-}
+tee ${PREFIX}/bin/vscode-css-language-server.cmd << EOF
+call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\lib\node_modules\vscode-langservers-extracted\bin\vscode-css-language-server "\$@"
+EOF
 
+tee ${PREFIX}/bin/vscode-eslint-server.cmd << EOF
+call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\lib\node_modules\vscode-langservers-extracted\bin\vscode-eslint-server "\$@"
+EOF
 
-# Replace all symlinks in ${PREFIX}/ by a shim.
-# Windows does not support symlinks without admin so the installer may fail.
-find "${PREFIX}/" -type l | while read -r f; do
-  shim_symlink "${f}"
-done
+tee ${PREFIX}/bin/vscode-json-server.cmd << EOF
+call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\lib\node_modules\vscode-langservers-extracted\bin\vscode-json-server "\$@"
+EOF
 
-# Make a windows shim in CMD to a .cmd file
-make_win_cmd() {
-    out="${1}.cmd"
-    base=$(basename "${out%.*}")
-    { echo "@\"%~dp0${base}\" %*"; } > "${out}"
-}
-
-make_win_cmd "${PREFIX}/bin/vscode-css-language-server"
-make_win_cmd "${PREFIX}/bin/vscode-eslint-language-server"
-make_win_cmd "${PREFIX}/bin/vscode-html-language-server"
-make_win_cmd "${PREFIX}/bin/vscode-json-language-server"
-make_win_cmd "${PREFIX}/bin/vscode-markdown-language-server"
+tee ${PREFIX}/bin/vscode-markdown-server.cmd << EOF
+call %CONDA_PREFIX%\bin\node %CONDA_PREFIX%\lib\node_modules\vscode-langservers-extracted\bin\vscode-markdown-server "\$@"
+EOF
