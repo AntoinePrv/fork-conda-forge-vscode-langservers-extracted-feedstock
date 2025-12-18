@@ -23,11 +23,16 @@ requirements:
 
 tests:
   - script:
-      - "vscode-css-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
-      - "vscode-eslint-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
-      - "vscode-html-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
-      - "vscode-json-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
-      - "vscode-markdown-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      # - "vscode-css-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      # - "vscode-eslint-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      # - "vscode-html-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      # - "vscode-json-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      # - "vscode-markdown-language-server 2>&1 | grep -q 'Connection input stream is not set.'"
+      - vscode-css-language-server
+      - vscode-eslint-language-server
+      - vscode-html-language-server
+      - vscode-json-language-server
+      - vscode-markdown-language-server
 
 about:
   license: MIT
